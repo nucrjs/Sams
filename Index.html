@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sam's Xpress | Market Intelligence Brief</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0D1B3E;--blue:#1B4F8C;--sky:#2E86C1;--teal:#0D9488;
+  --gold:#D4A843;--white:#FFFFFF;--off:#F4F7FA;--light:#E8EFF8;
+  --muted:#64748B;--border:#CBD5E1;--text:#1E293B;
+  --green:#16A34A;--red:#DC2626;--amber:#D97706;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--off);color:var(--text)}
+nav{background:var(--navy);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:200}
+.nav-brand{color:var(--white);font-weight:700;font-size:.85rem;letter-spacing:.04em}
+.nav-brand span{color:var(--teal)}
+.nav-links{display:flex;gap:1.5rem}
+.nav-links a{color:#8AAFC8;font-size:.78rem;text-decoration:none}
+.nav-links a:hover{color:var(--white)}
+.hero{background:var(--navy);padding:3.5rem 2rem 3rem;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;right:-60px;top:-60px;width:320px;height:320px;border-radius:50%;background:rgba(13,148,136,.07)}
+.hero-inner{max-width:1020px;margin:0 auto}
+.hero-label{font-size:.7rem;font-weight:700;letter-spacing:.12em;color:var(--teal);text-transform:uppercase;margin-bottom:.75rem}
+.hero h1{font-size:clamp(1.6rem,4vw,2.4rem);font-weight:700;color:var(--white);line-height:1.2;margin-bottom:.4rem}
+.hero h1 em{color:var(--gold);font-style:normal}
+.hero p{color:#8AAFC8;font-size:.92rem;max-width:560px;line-height:1.6;margin-bottom:1.8rem}
+.hero-stats{display:flex;gap:1.25rem;flex-wrap:wrap}
+.stat-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.9rem 1.4rem}
+.stat-box .num{font-size:1.8rem;font-weight:700;color:var(--gold)}
+.stat-box .lbl{font-size:.7rem;color:#8AAFC8;margin-top:2px;letter-spacing:.04em}
+.attribution-bar{background:#FEF3C7;border-left:4px solid #F59E0B;padding:.6rem 1.25rem;font-size:.8rem;color:#92400E;max-width:1020px;margin:1rem auto 0}
+section{max-width:1020px;margin:2rem auto;padding:0 1.5rem}
+.section-head{display:flex;align-items:baseline;gap:.75rem;margin-bottom:1.25rem}
+.section-tag{font-size:.68rem;font-weight:700;letter-spacing:.1em;color:var(--teal);text-transform:uppercase}
+.section-head h2{font-size:1.2rem;font-weight:700;color:var(--navy)}
+.card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1rem}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
+.grid-4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem}
+/* Map */
+#map{height:480px;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.map-legend{display:flex;gap:1.25rem;flex-wrap:wrap;margin-top:.75rem;font-size:.78rem;color:var(--muted)}
+.map-legend span{display:flex;align-items:center;gap:5px}
+.leg-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+/* Score bars */
+.score-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem}
+.score-label{font-size:.8rem;color:var(--text);min-width:130px}
+.score-track{flex:1;height:8px;background:var(--light);border-radius:4px;overflow:hidden}
+.score-fill{height:100%;border-radius:4px}
+.score-val{font-size:.78rem;font-weight:700;min-width:28px;text-align:right}
+/* HH/CW zones */
+.zone-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.85rem}
+.zone-card{border-radius:10px;padding:1rem 1.25rem;border:1px solid var(--border)}
+.zone-card .zone-label{font-size:1rem;font-weight:700;margin-bottom:.25rem}
+.zone-card .zone-range{font-size:.85rem;font-weight:600;margin-bottom:.5rem}
+.zone-card .zone-desc{font-size:.78rem;color:var(--muted);line-height:1.5}
+/* Location table */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);background:var(--white)}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+thead tr{background:var(--navy)}
+thead th{padding:.6rem .9rem;color:var(--white);font-weight:600;text-align:left;white-space:nowrap}
+tbody tr:nth-child(even){background:var(--off)}
+tbody tr:hover{background:var(--light)}
+tbody td{padding:.5rem .9rem;border-bottom:1px solid var(--border)}
+/* 2x2 */
+.quadrant-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:1px;background:var(--border);border-radius:10px;overflow:hidden;height:440px}
+.quad{padding:1.25rem;display:flex;flex-direction:column;gap:.4rem}
+.quad-label{font-size:1rem;font-weight:700}
+.quad-sub{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.8}
+.quad-desc{font-size:.78rem;line-height:1.5;margin-top:.25rem;flex:1}
+.quad-markets{margin-top:auto;display:flex;flex-direction:column;gap:.25rem}
+.quad-market{font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:.4rem}
+.quad-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.q-priority{background:#0a2a1a;color:#4ADE80}
+.q-maintain{background:#1e2a0a;color:#D4A843}
+.q-watch{background:#0f1e3a;color:#60A5FA}
+.q-monitor{background:#1a1a2a;color:var(--muted)}
+/* Axis labels */
+.matrix-wrap{position:relative}
+.axis-x{text-align:center;font-size:.7rem;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:.5rem}
+.axis-y-wrap{display:flex;align-items:center;gap:.5rem}
+.axis-y{font-size:.7rem;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap}
+/* Competitor table */
+.filter-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+.filter-btn{padding:.3rem .85rem;border-radius:20px;border:1px solid var(--border);background:var(--white);font-size:.76rem;cursor:pointer;color:var(--muted);transition:all .15s}
+.filter-btn.active,.filter-btn:hover{background:var(--navy);color:var(--white);border-color:var(--navy)}
+/* Callout */
+.callout{background:linear-gradient(135deg,#0f2040,#0D1B3E);border-radius:12px;padding:1.5rem 2rem;color:var(--white)}
+.callout h3{font-size:1rem;color:var(--gold);margin-bottom:.35rem}
+.callout p{font-size:.85rem;color:#A8C4E0;line-height:1.6}
+/* Phase cards */
+.phase-card{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.phase-header{padding:.75rem 1.25rem;color:var(--white);font-weight:700}
+.phase-body{padding:1rem 1.25rem}
+.phase-item{display:flex;align-items:flex-start;gap:.6rem;margin-bottom:.6rem;font-size:.82rem;color:var(--text)}
+.phase-item::before{content:"✓";color:var(--teal);font-weight:700;flex-shrink:0;margin-top:1px}
+.phase-timeline{font-size:.72rem;font-weight:600;padding:.25rem .75rem;border-radius:12px;background:var(--light);color:var(--muted);display:inline-block;margin-top:.5rem}
+footer{background:var(--navy);color:#3A5070;text-align:center;font-size:.72rem;padding:1.25rem;margin-top:3rem}
+.chart-wrap{position:relative;width:100%;height:280px}
+@media(max-width:600px){.hero-stats{gap:.75rem}.stat-box .num{font-size:1.4rem}.quadrant-grid{grid-template-columns:1fr;height:auto}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">Haycor - NUCR <span>// Market Intelligence</span></div>
+  <div class="nav-links">
+    <a href="#map-section">Map</a>
+    <a href="#density">HH/CW</a>
+    <a href="#scoring">Scoring</a>
+    <a href="#quadrant">2×2</a>
+    <a href="#locations">Locations</a>
+    <a href="#proposal">Proposal</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-label">Market Intelligence Briefing — Confidential</div>
+    <h1>Understanding Sam's Xpress<br><em>Car Wash Markets</em></h1>
+    <p>A demographic and site intelligence overview of the Sam's Xpress footprint across NC, SC & VA — including competition density scoring, market ranking, and expansion intelligence.</p>
+    <div class="hero-stats">
+      <div class="stat-box"><div class="num">52</div><div class="lbl">Locations</div></div>
+      <div class="stat-box"><div class="num">3</div><div class="lbl">States</div></div>
+      <div class="stat-box"><div class="num">9</div><div class="lbl">Metro Markets</div></div>
+      <div class="stat-box"><div class="num">1,609</div><div class="lbl">Competitors Mapped</div></div>
+      <div class="stat-box"><div class="num">4,875</div><div class="lbl">Avg HH/Car Wash</div></div>
+    </div>
+  </div>
+</div>
+
+<div style="background:#FEF3C7;border-bottom:1px solid #F59E0B">
+  <div class="attribution-bar">
+    <strong>Methodology Note:</strong> Trade area classifications, drive-time assumptions, market scores, and predictive scores represent Hayco's recommended site intelligence framework and do not represent Sam's Xpress's internal methodology, data, or strategies.
+  </div>
+</div>
+
+<!-- MAP -->
+<section id="map-section">
+  <div class="section-head">
+    <span class="section-tag">Footprint + Competition</span>
+    <h2>52 Sam's Xpress Locations | 1,609 Competitors Mapped</h2>
+  </div>
+  <div class="card" style="padding:1rem">
+    <div id="map"></div>
+    <div class="map-legend">
+      <span><span class="leg-dot" style="background:#0D1B3E;border:2px solid #D4A843"></span> Sam's Xpress (52)</span>
+      <span><span class="leg-dot" style="background:#DC2626"></span> Competitors (1,609)</span>
+      <span style="color:var(--muted);font-style:italic">Home-based & mobile-only operators excluded. Source: Infogroup SIC 7542.</span>
+    </div>
+  </div>
+</section>
+
+<!-- COMPETITION DENSITY -->
+<section id="density">
+  <div class="section-head">
+    <span class="section-tag">Competition Density</span>
+    <h2>Why Households per Car Wash Is the Right Metric</h2>
+  </div>
+  <div class="callout" style="margin-bottom:1.25rem">
+    <h3>The Problem with Raw Counts</h3>
+    <p>A market with 20 car washes could be underserved or completely saturated — it depends entirely on the household base. Households per Car Wash (HH/CW) normalizes for market size and reflects actual demand-to-supply ratio within each Sam's Xpress drive-time trade area.</p>
+  </div>
+  <div class="zone-grid">
+    <div class="zone-card" style="border-color:#FCA5A5;background:#FEF2F2">
+      <div class="zone-label" style="color:#DC2626">Saturated</div>
+      <div class="zone-range" style="color:#DC2626">&lt; 4,000 HH/CW</div>
+      <div class="zone-desc">Too many washes for the household base. Membership cannibalization risk is high. Defend existing members rather than invest in growth.</div>
+    </div>
+    <div class="zone-card" style="border-color:#FDE68A;background:#FFFBEB">
+      <div class="zone-label" style="color:#D97706">Competitive</div>
+      <div class="zone-range" style="color:#D97706">4,000–6,000 HH/CW</div>
+      <div class="zone-desc">Normal competitive market. Performance depends on site quality and brand strength. Most of Sam's Xpress portfolio sits here.</div>
+    </div>
+    <div class="zone-card" style="border-color:#6EE7B7;background:#ECFDF5">
+      <div class="zone-label" style="color:#059669">Healthy</div>
+      <div class="zone-range" style="color:#059669">6,000–8,000 HH/CW</div>
+      <div class="zone-desc">Well-positioned for growth. Demand exceeds supply — membership conversion rates are strong and new locations can be supported.</div>
+    </div>
+    <div class="zone-card" style="border-color:#6EE7B7;background:#F0FDF4">
+      <div class="zone-label" style="color:#16A34A">Underserved</div>
+      <div class="zone-range" style="color:#16A34A">&gt; 8,000 HH/CW</div>
+      <div class="zone-desc">Clear opportunity. Market is underpenetrated — early-mover advantage is available before competitors recognize the gap.</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:1rem;background:#0f2040;border-color:#1e3a5f">
+    <p style="color:var(--gold);font-weight:600;font-size:.9rem">Portfolio Range: 3,058 HH/CW (Winston-Salem) → 8,176 HH/CW (Waxhaw) &nbsp;|&nbsp; Portfolio Average: 4,875 HH/CW &nbsp;|&nbsp; Benchmark Healthy: 6,000–8,000</p>
+  </div>
+</section>
+
+<!-- MARKET SCORING -->
+<section id="scoring">
+  <div class="section-head">
+    <span class="section-tag">Market Scoring</span>
+    <h2>Market Score &amp; Predictive Score by Metro</h2>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div style="font-size:.76rem;font-weight:700;color:var(--muted);letter-spacing:.06em;margin-bottom:1rem">MARKET SCORE — Context Quality (0–100)</div>
+      <div id="msRows"></div>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:.75rem;border-top:1px solid var(--border);padding-top:.6rem">Weights: HH Income 20% | HH Expenditure 20% | HH/Car Wash 25% | Pop Growth 15% | Median Age 10% | Daytime Ratio 10%</div>
+    </div>
+    <div class="card">
+      <div style="font-size:.76rem;font-weight:700;color:var(--muted);letter-spacing:.06em;margin-bottom:1rem">PREDICTIVE SCORE — Expected Performance (0–100)</div>
+      <div id="psRows"></div>
+      <div style="font-size:.7rem;color:var(--muted);margin-top:.75rem;border-top:1px solid var(--border);padding-top:.6rem">Weights: Revenue Opportunity/CW 30% | Membership Propensity 20% | White Collar % 15% | HH/CW 15% | Pop Growth 10% | Crime (inv) 10%</div>
+    </div>
+  </div>
+
+  <!-- HH/CW chart -->
+  <div class="card" style="margin-top:1rem">
+    <div style="font-size:.76rem;font-weight:700;color:var(--muted);letter-spacing:.06em;margin-bottom:.75rem">AVERAGE HH PER CAR WASH BY MARKET (drive-time trade area)</div>
+    <div class="chart-wrap" style="height:240px">
+      <canvas id="hhChart" role="img" aria-label="Bar chart of households per car wash by market">Triangle 5910, Richmond 5532, Fredericksburg 4156, Charlotte 4719, Hampton Roads 4496, Eastern NC 4436, Piedmont NC 4692, Williamsburg 4940, Triad 3660.</canvas>
+    </div>
+  </div>
+</section>
+
+<!-- 2x2 QUADRANT -->
+<section id="quadrant">
+  <div class="section-head">
+    <span class="section-tag">Strategic Portfolio View</span>
+    <h2>Where to Invest, Hold, and Watch</h2>
+  </div>
+  <div class="axis-x">MARKET SCORE (Context Quality) →</div>
+  <div class="axis-y-wrap">
+    <div class="axis-y">PREDICTIVE SCORE →</div>
+    <div style="flex:1">
+      <div class="quadrant-grid">
+        <div class="quad q-watch">
+          <div class="quad-label">WATCH</div>
+          <div class="quad-sub">High Potential</div>
+          <div class="quad-desc">Strong predicted performance but weaker market context. Monitor closely and evaluate site-specific opportunities.</div>
+          <div class="quad-markets">
+            <div class="quad-market" style="color:var(--muted);font-style:italic;font-size:.75rem">No markets currently in this quadrant</div>
+          </div>
+        </div>
+        <div class="quad q-priority">
+          <div class="quad-label" style="color:#4ADE80">PRIORITY — Expand Now</div>
+          <div class="quad-sub" style="color:#4ADE80">Best markets + best performance</div>
+          <div class="quad-desc" style="color:#86EFAC">Deploy capital here first. These markets offer both strong demographic quality and high predicted location performance.</div>
+          <div class="quad-markets">
+            <div class="quad-market" style="color:#4ADE80"><span class="quad-dot" style="background:#4ADE80"></span>Triangle — PS: 54.6 | MS: 50.4</div>
+            <div class="quad-market" style="color:#4ADE80"><span class="quad-dot" style="background:#4ADE80"></span>Fredericksburg — PS: 44.5 | MS: 50.5</div>
+            <div class="quad-market" style="color:#4ADE80"><span class="quad-dot" style="background:#4ADE80"></span>Williamsburg — PS: 42.4 | MS: 40.2</div>
+            <div class="quad-market" style="color:#4ADE80"><span class="quad-dot" style="background:#4ADE80"></span>Charlotte — PS: 41.8 | MS: 40.1</div>
+            <div class="quad-market" style="color:#4ADE80"><span class="quad-dot" style="background:#4ADE80"></span>Richmond — PS: 41.6 | MS: 37.4</div>
+          </div>
+        </div>
+        <div class="quad q-monitor">
+          <div class="quad-label" style="color:var(--muted)">MONITOR — Reassess</div>
+          <div class="quad-sub" style="color:var(--muted)">Weaker on both dimensions</div>
+          <div class="quad-desc" style="color:#4A5568">Hold and optimize existing operations. Investment in new locations in these markets carries higher risk.</div>
+          <div class="quad-markets">
+            <div class="quad-market" style="color:#6B7280"><span class="quad-dot" style="background:#6B7280"></span>Hampton Roads — PS: 32.0 | MS: 32.5</div>
+            <div class="quad-market" style="color:#6B7280"><span class="quad-dot" style="background:#6B7280"></span>Eastern NC — PS: 28.8 | MS: 20.1</div>
+            <div class="quad-market" style="color:#6B7280"><span class="quad-dot" style="background:#6B7280"></span>Piedmont NC — PS: 25.7 | MS: 15.4</div>
+            <div class="quad-market" style="color:#6B7280"><span class="quad-dot" style="background:#6B7280"></span>Triad — PS: 21.5 | MS: 15.7</div>
+          </div>
+        </div>
+        <div class="quad q-maintain">
+          <div class="quad-label" style="color:var(--gold)">MAINTAIN</div>
+          <div class="quad-sub" style="color:var(--gold)">Defend Position</div>
+          <div class="quad-desc" style="color:#D4A843">Strong market context but lower predicted location performance. Protect membership base and operational efficiency.</div>
+          <div class="quad-markets">
+            <div class="quad-market" style="color:var(--muted);font-style:italic;font-size:.75rem">No markets currently in this quadrant</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOCATION TABLE -->
+<section id="locations">
+  <div class="section-head">
+    <span class="section-tag">Location Intelligence</span>
+    <h2>All 52 Locations — Market &amp; Predictive Scores</h2>
+  </div>
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="filterLoc('all',this)">All (52)</button>
+    <button class="filter-btn" onclick="filterLoc('Charlotte',this)">Charlotte</button>
+    <button class="filter-btn" onclick="filterLoc('Triangle',this)">Triangle</button>
+    <button class="filter-btn" onclick="filterLoc('Richmond',this)">Richmond</button>
+    <button class="filter-btn" onclick="filterLoc('Hampton Roads',this)">Hampton Roads</button>
+    <button class="filter-btn" onclick="filterLoc('Other',this)">Other Markets</button>
+  </div>
+  <div class="table-wrap">
+    <table id="locTable">
+      <thead><tr>
+        <th>ID</th><th>City</th><th>State</th><th>Market</th><th>Class</th>
+        <th>HH/CW</th><th>Rev Opp ($M)</th><th>MPI</th><th>Market Score</th><th>Predictive Score</th>
+      </tr></thead>
+      <tbody id="locBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- PROPOSAL -->
+<section id="proposal">
+  <div class="section-head">
+    <span class="section-tag">Our Proposal</span>
+    <h2>A Three-Phase Partnership</h2>
+  </div>
+  <div class="grid-3" style="margin-bottom:1.25rem">
+    <div class="phase-card">
+      <div class="phase-header" style="background:var(--navy)">
+        <div style="font-size:.7rem;letter-spacing:.08em;opacity:.8;margin-bottom:.2rem">PHASE 1 — WEEKS 1–3</div>
+        Baseline Intelligence
+      </div>
+      <div class="phase-body">
+        <div class="phase-item">Density-classified trade areas for all 52 locations</div>
+        <div class="phase-item">Full demographic batch — ACS + STI at correct ring sizes</div>
+        <div class="phase-item">HH/CW scoring recalibrated across all markets</div>
+        <div class="phase-item">Market + Predictive scores finalized with verified data</div>
+        <div class="phase-timeline">Weeks 1–3</div>
+      </div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-header" style="background:var(--sky)">
+        <div style="font-size:.7rem;letter-spacing:.08em;opacity:.8;margin-bottom:.2rem">PHASE 2 — WEEKS 4–8</div>
+        Enhanced Scoring Model
+      </div>
+      <div class="phase-body">
+        <div class="phase-item">Add 25 additional metrics — vehicle, traffic, competitive</div>
+        <div class="phase-item">Weighted scoring model calibrated to your market</div>
+        <div class="phase-item">Rank all 52 locations by validated Predictive Score</div>
+        <div class="phase-item">Identify top 5–10 expansion market candidates</div>
+        <div class="phase-timeline">Weeks 4–8</div>
+      </div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-header" style="background:var(--teal)">
+        <div style="font-size:.7rem;letter-spacing:.08em;opacity:.8;margin-bottom:.2rem">PHASE 3 — ONGOING</div>
+        Intelligence Partner
+      </div>
+      <div class="phase-body">
+        <div class="phase-item">Quarterly updates as new sites open</div>
+        <div class="phase-item">New market feasibility reports on demand</div>
+        <div class="phase-item">Competitive monitoring — flag new entrants</div>
+        <div class="phase-item">Annual site portfolio review & scoring refresh</div>
+        <div class="phase-timeline">Ongoing</div>
+      </div>
+    </div>
+  </div>
+  <div class="callout" style="display:flex;align-items:center;gap:2rem;flex-wrap:wrap">
+    <div>
+      <h3>Ready to Begin Phase 1?</h3>
+      <p>No additional data spend required. We use the demographic sources already in your GIS system — we just apply the right methodology and scoring framework.</p>
+    </div>
+    <div style="flex-shrink:0;text-align:center">
+      <div style="font-size:.72rem;color:#6A8FAF;margin-bottom:.25rem">Contact</div>
+      <div style="color:var(--gold);font-weight:700">Dalton Quesinberry and Jason Scott</div>
+      <div style="color:#8AAFC8;font-size:.82rem">daltonq@hayco-construction.com and jscott@nationalucr.com &nbsp;·&nbsp; 336-401-0055  and 813-732-3700</div>
+    </div>
+  </div>
+</section>
+
+<footer>Sam's Xpress Car Wash — Market Intelligence Briefing &nbsp;•&nbsp; Prepared by Hayco Construction - Powered by NUCR &nbsp;•&nbsp; Confidential &nbsp;•&nbsp; 2026<br>
+<span style="font-size:.65rem">Trade area classifications and scores represent Hayco's recommended methodology and do not represent Sam's Xpress's internal data or strategies.</span></footer>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const markets = [
+  {m:"Triangle",      locs:10, hhCw:5910, rev:370.50, hhi:104976, growth:7.0,  crime:89.4,  mpi:.44, ms:50.4, ps:54.6},
+  {m:"Fredericksburg",locs:1,  hhCw:4156, rev:291.15, hhi:108717, growth:10.0, crime:71.0,  mpi:.39, ms:50.5, ps:44.5},
+  {m:"Williamsburg",  locs:1,  hhCw:4940, rev:282.33, hhi:108242, growth:9.0,  crime:63.8,  mpi:.27, ms:40.2, ps:42.4},
+  {m:"Charlotte",     locs:24, hhCw:4719, rev:275.86, hhi:100001, growth:7.0,  crime:135.0, mpi:.42, ms:40.1, ps:41.8},
+  {m:"Richmond",      locs:5,  hhCw:5532, rev:292.76, hhi:86672,  growth:5.0,  crime:84.8,  mpi:.22, ms:37.4, ps:41.6},
+  {m:"Hampton Roads", locs:5,  hhCw:4496, rev:257.25, hhi:84145,  growth:2.0,  crime:148.8, mpi:.21, ms:32.5, ps:32.0},
+  {m:"Eastern NC",    locs:2,  hhCw:4436, rev:220.98, hhi:65673,  growth:2.0,  crime:117.9, mpi:.20, ms:20.1, ps:28.8},
+  {m:"Piedmont NC",   locs:2,  hhCw:4692, rev:233.73, hhi:65036,  growth:-1.0, crime:100.9, mpi:.10, ms:15.4, ps:25.7},
+  {m:"Triad",         locs:2,  hhCw:3660, rev:180.11, hhi:64611,  growth:1.0,  crime:154.0, mpi:.18, ms:15.7, ps:21.5},
+];
+
+const locations = [
+  {id:"SX26",city:"Waxhaw",       st:"NC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:8176,rev:616.1,mpi:.606,ms:73.7,ps:78.8},
+  {id:"SX16",city:"Wake Forest",  st:"NC",mkt:"Triangle",    cls:"Suburban",      hhCw:7693,rev:531.6,mpi:.592,ms:65.1,ps:74.6},
+  {id:"SX15",city:"Clayton",      st:"NC",mkt:"Triangle",    cls:"Rural Adj",     hhCw:7590,rev:455.7,mpi:.378,ms:54.7,ps:62.0},
+  {id:"SX11",city:"Apex",         st:"NC",mkt:"Triangle",    cls:"Suburban Light",hhCw:6294,rev:427.8,mpi:.508,ms:60.3,ps:61.4},
+  {id:"SX10",city:"Durham",       st:"NC",mkt:"Triangle",    cls:"Suburban Light",hhCw:7173,rev:411.1,mpi:.359,ms:55.6,ps:60.2},
+  {id:"SX39",city:"Indian Land",  st:"SC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:5755,rev:396.8,mpi:.589,ms:57.1,ps:58.5},
+  {id:"SX17",city:"Wake Forest",  st:"NC",mkt:"Triangle",    cls:"Suburban Light",hhCw:5750,rev:389.7,mpi:.525,ms:53.5,ps:58.0},
+  {id:"SX38",city:"Lake Wylie",   st:"SC",mkt:"Charlotte",   cls:"Rural Adj",     hhCw:6307,rev:378.7,mpi:.470,ms:50.6,ps:55.3},
+  {id:"SX13",city:"Garner",       st:"NC",mkt:"Triangle",    cls:"Suburban Light",hhCw:6627,rev:392.7,mpi:.369,ms:49.6,ps:54.7},
+  {id:"SX12",city:"Fuquay-Varina",st:"NC",mkt:"Triangle",    cls:"Suburban Light",hhCw:4759,rev:333.1,mpi:.533,ms:55.4,ps:53.6},
+  {id:"SX14",city:"Knightdale",   st:"NC",mkt:"Triangle",    cls:"Suburban Light",hhCw:5311,rev:318.4,mpi:.428,ms:43.3,ps:49.7},
+  {id:"SX48",city:"Henrico",      st:"VA",mkt:"Richmond",    cls:"Suburban",      hhCw:5943,rev:305.4,mpi:.257,ms:39.1,ps:46.7},
+  {id:"SX46",city:"Mechanicsville",st:"VA",mkt:"Richmond",   cls:"Rural Adj",     hhCw:6547,rev:336.0,mpi:.194,ms:39.5,ps:45.7},
+  {id:"SX01",city:"Charlotte",    st:"NC",mkt:"Charlotte",   cls:"Suburban",      hhCw:4985,rev:284.5,mpi:.425,ms:46.2,ps:46.4},
+  {id:"SX21",city:"Huntersville", st:"NC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:5136,rev:288.5,mpi:.452,ms:43.6,ps:46.4},
+  {id:"SX28",city:"Denver",       st:"NC",mkt:"Charlotte",   cls:"Rural Adj",     hhCw:5322,rev:313.2,mpi:.428,ms:37.6,ps:44.5},
+  {id:"SX47",city:"Fredericksburg",st:"VA",mkt:"Fredericksburg",cls:"Suburban Light",hhCw:4156,rev:291.2,mpi:.393,ms:50.5,ps:44.5},
+  {id:"SX43",city:"Henrico",      st:"VA",mkt:"Richmond",    cls:"Suburban",      hhCw:5097,rev:260.2,mpi:.255,ms:48.4,ps:43.8},
+  {id:"SX06",city:"Charlotte",    st:"NC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:4607,rev:246.9,mpi:.366,ms:43.1,ps:43.5},
+  {id:"SX19",city:"Cary",         st:"NC",mkt:"Triangle",    cls:"Suburban",      hhCw:4898,rev:234.2,mpi:.269,ms:48.4,ps:43.5},
+  {id:"SX42",city:"Williamsburg", st:"VA",mkt:"Williamsburg",cls:"Suburban",      hhCw:4940,rev:282.3,mpi:.271,ms:40.2,ps:42.4},
+  {id:"SX18",city:"Raleigh",      st:"NC",mkt:"Triangle",    cls:"Urban",         hhCw:5099,rev:256.2,mpi:.308,ms:40.5,ps:41.9},
+  {id:"SX04",city:"Charlotte",    st:"NC",mkt:"Charlotte",   cls:"Suburban",      hhCw:5138,rev:247.8,mpi:.280,ms:46.5,ps:44.3},
+  {id:"SX02",city:"Charlotte",    st:"NC",mkt:"Charlotte",   cls:"Urban",         hhCw:5098,rev:260.2,mpi:.255,ms:48.4,ps:43.8},
+  {id:"SX41",city:"Midlothian",   st:"VA",mkt:"Richmond",    cls:"Suburban",      hhCw:5757,rev:323.5,mpi:.228,ms:38.8,ps:41.6},
+  {id:"SX20",city:"Huntersville", st:"NC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:5150,rev:288.2,mpi:.427,ms:42.0,ps:41.4},
+  {id:"SX03",city:"Charlotte",    st:"NC",mkt:"Charlotte",   cls:"Suburban",      hhCw:3899,rev:223.8,mpi:.486,ms:40.2,ps:40.8},
+  {id:"SX40",city:"Indian Land",  st:"SC",mkt:"Charlotte",   cls:"Suburban",      hhCw:4437,rev:249.6,mpi:.340,ms:36.8,ps:39.7},
+  {id:"SX23",city:"Mint Hill",    st:"NC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:4943,rev:256.5,mpi:.346,ms:37.3,ps:39.4},
+  {id:"SX35",city:"Fort Mill",    st:"SC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:5060,rev:271.9,mpi:.350,ms:39.0,ps:39.2},
+  {id:"SX25",city:"Indian Trail", st:"NC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:4760,rev:248.4,mpi:.341,ms:36.8,ps:38.6},
+  {id:"SX27",city:"Mooresville",  st:"NC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:5048,rev:238.2,mpi:.274,ms:35.2,ps:37.7},
+  {id:"SX30",city:"Concord",      st:"NC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:4875,rev:249.0,mpi:.320,ms:37.1,ps:37.5},
+  {id:"SX45",city:"Chesapeake",   st:"VA",mkt:"Hampton Roads",cls:"Suburban Light",hhCw:4760,rev:271.4,mpi:.240,ms:34.7,ps:37.2},
+  {id:"SX36",city:"Rock Hill",    st:"SC",mkt:"Charlotte",   cls:"Rural Adj",     hhCw:4855,rev:246.7,mpi:.267,ms:34.5,ps:36.8},
+  {id:"SX24",city:"Mint Hill",    st:"NC",mkt:"Charlotte",   cls:"Suburban",      hhCw:4630,rev:235.5,mpi:.286,ms:34.0,ps:36.2},
+  {id:"SX37",city:"Rock Hill",    st:"SC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:5023,rev:248.2,mpi:.318,ms:36.2,ps:36.1},
+  {id:"SX49",city:"Suffolk",      st:"VA",mkt:"Hampton Roads",cls:"Suburban Light",hhCw:4520,rev:238.4,mpi:.218,ms:32.5,ps:35.5},
+  {id:"SX29",city:"Gastonia",     st:"NC",mkt:"Charlotte",   cls:"Suburban Light",hhCw:4410,rev:226.8,mpi:.232,ms:31.8,ps:35.2},
+  {id:"SX46",city:"Mechanicsville",st:"VA",mkt:"Richmond",   cls:"Rural Adj",     hhCw:6547,rev:336.0,mpi:.194,ms:39.5,ps:45.7},
+  {id:"SX44",city:"Chester",      st:"VA",mkt:"Richmond",    cls:"Suburban Light",hhCw:3762,rev:221.3,mpi:.219,ms:30.4,ps:30.3},
+  {id:"SX09",city:"Rocky Mount",  st:"NC",mkt:"Eastern NC",  cls:"Suburban Light",hhCw:5048,rev:256.1,mpi:.176,ms:17.3,ps:29.8},
+  {id:"SX08",city:"Greenville",   st:"NC",mkt:"Eastern NC",  cls:"Suburban Light",hhCw:3824,rev:185.9,mpi:.231,ms:22.8,ps:27.7},
+  {id:"SX47",city:"Fredericksburg",st:"VA",mkt:"Fredericksburg",cls:"Suburban Light",hhCw:4156,rev:291.2,mpi:.393,ms:50.5,ps:44.5},
+  {id:"SX32",city:"Morganton",    st:"NC",mkt:"Piedmont NC", cls:"Rural Adj",     hhCw:5527,rev:352.5,mpi:.065,ms:19.4,ps:32.7},
+  {id:"SX22",city:"Matthews",     st:"NC",mkt:"Charlotte",   cls:"Suburban",      hhCw:4187,rev:233.3,mpi:.354,ms:25.7,ps:30.9},
+  {id:"SX07",city:"Pineville",    st:"NC",mkt:"Charlotte",   cls:"Suburban",      hhCw:3597,rev:199.0,mpi:.378,ms:32.6,ps:31.4},
+  {id:"SX50",city:"Hampton",      st:"VA",mkt:"Hampton Roads",cls:"Suburban",     hhCw:4122,rev:203.6,mpi:.077,ms:21.9,ps:23.0},
+  {id:"SX34",city:"High Point",   st:"NC",mkt:"Triad",       cls:"Suburban Light",hhCw:4262,rev:214.6,mpi:.176,ms:17.9,ps:24.0},
+  {id:"SX33",city:"Winston-Salem",st:"NC",mkt:"Triad",       cls:"Suburban Light",hhCw:3058,rev:145.7,mpi:.187,ms:13.5,ps:19.1},
+  {id:"SX31",city:"Hickory",      st:"NC",mkt:"Piedmont NC", cls:"Suburban Light",hhCw:3257,rev:164.2,mpi:.136,ms:11.3,ps:18.8},
+  {id:"SX51",city:"Norfolk",      st:"VA",mkt:"Hampton Roads",cls:"Urban",        hhCw:3520,rev:184.6,mpi:.045,ms:25.0,ps:18.3},
+  {id:"SX52",city:"Virginia Beach",st:"VA",mkt:"Hampton Roads",cls:"Suburban Light",hhCw:3780,rev:190.2,mpi:.122,ms:22.5,ps:20.5},
+];
+
+// ── Map ───────────────────────────────────────────────────────────────────────
+const samsLocs = [
+  {id:"SX01",lat:35.311,lon:-80.715},{id:"SX02",lat:35.272,lon:-80.768},{id:"SX03",lat:35.370,lon:-80.735},
+  {id:"SX04",lat:35.244,lon:-80.890},{id:"SX05",lat:35.178,lon:-80.875},{id:"SX06",lat:35.164,lon:-80.970},
+  {id:"SX07",lat:35.095,lon:-80.865},{id:"SX08",lat:35.548,lon:-77.401},{id:"SX09",lat:35.969,lon:-77.814},
+  {id:"SX10",lat:35.929,lon:-78.890},{id:"SX11",lat:35.720,lon:-78.843},{id:"SX12",lat:35.595,lon:-78.763},
+  {id:"SX13",lat:35.699,lon:-78.592},{id:"SX14",lat:35.796,lon:-78.521},{id:"SX15",lat:35.666,lon:-78.497},
+  {id:"SX16",lat:35.952,lon:-78.524},{id:"SX17",lat:35.971,lon:-78.555},{id:"SX18",lat:35.863,lon:-78.602},
+  {id:"SX19",lat:35.745,lon:-78.737},{id:"SX20",lat:35.444,lon:-80.866},{id:"SX21",lat:35.372,lon:-80.832},
+  {id:"SX22",lat:35.128,lon:-80.731},{id:"SX23",lat:35.223,lon:-80.633},{id:"SX24",lat:35.185,lon:-80.688},
+  {id:"SX25",lat:35.072,lon:-80.647},{id:"SX26",lat:34.950,lon:-80.756},{id:"SX27",lat:35.596,lon:-80.874},
+  {id:"SX28",lat:35.450,lon:-81.003},{id:"SX29",lat:35.261,lon:-81.146},{id:"SX30",lat:35.395,lon:-80.618},
+  {id:"SX31",lat:35.751,lon:-81.289},{id:"SX32",lat:35.728,lon:-81.701},{id:"SX33",lat:36.157,lon:-80.278},
+  {id:"SX34",lat:35.928,lon:-79.987},{id:"SX35",lat:35.037,lon:-80.976},{id:"SX36",lat:34.982,lon:-81.091},
+  {id:"SX37",lat:34.980,lon:-80.981},{id:"SX38",lat:35.113,lon:-81.049},{id:"SX39",lat:34.950,lon:-80.847},
+  {id:"SX40",lat:35.014,lon:-80.851},{id:"SX41",lat:37.435,lon:-77.609},{id:"SX42",lat:37.285,lon:-76.714},
+  {id:"SX43",lat:37.511,lon:-77.349},{id:"SX44",lat:37.360,lon:-77.497},{id:"SX45",lat:36.714,lon:-76.281},
+  {id:"SX46",lat:37.619,lon:-77.316},{id:"SX47",lat:38.221,lon:-77.508},{id:"SX48",lat:37.633,lon:-77.510},
+  {id:"SX49",lat:36.877,lon:-76.429},{id:"SX50",lat:37.024,lon:-76.436},{id:"SX51",lat:36.845,lon:-76.235},
+  {id:"SX52",lat:36.774,lon:-76.020},
+];
+
+// Sample competitors (representative subset for display — full 1609 in CSV)
+const compSample = [
+  {n:"Autobell Car Wash",lat:35.302,lon:-80.752},{n:"Autobell Car Wash",lat:35.189,lon:-80.861},
+  {n:"Autobell Car Wash",lat:35.440,lon:-80.867},{n:"Autobell Car Wash",lat:35.952,lon:-78.558},
+  {n:"Autobell Car Wash",lat:35.748,lon:-78.724},{n:"Whistle Express",lat:35.268,lon:-80.734},
+  {n:"Whistle Express",lat:35.372,lon:-80.722},{n:"Tidal Wave Auto Spa",lat:35.150,lon:-79.419},
+  {n:"Tidal Wave Auto Spa",lat:35.349,lon:-80.166},{n:"Zips Car Wash",lat:35.196,lon:-80.785},
+  {n:"Zips Car Wash",lat:35.730,lon:-78.845},{n:"Zips Car Wash",lat:37.506,lon:-77.411},
+  {n:"Modwash",lat:35.460,lon:-80.838},{n:"Modwash",lat:35.744,lon:-78.737},
+  {n:"Take 5 Car Wash",lat:35.222,lon:-80.832},{n:"Take 5 Car Wash",lat:35.598,lon:-78.760},
+  {n:"GO Car Wash",lat:35.088,lon:-80.867},{n:"Tommy's Express",lat:35.752,lon:-81.280},
+  {n:"Flagship Carwash",lat:37.629,lon:-77.501},{n:"Flagship Carwash",lat:37.358,lon:-77.492},
+  {n:"Autobell Car Wash",lat:36.155,lon:-80.301},{n:"Autobell Car Wash",lat:35.928,lon:-79.982},
+  {n:"Whistle Express",lat:35.668,lon:-78.490},{n:"Zips Car Wash",lat:36.716,lon:-76.295},
+  {n:"Tidal Wave Auto Spa",lat:35.152,lon:-79.416},{n:"Autobell Car Wash",lat:35.135,lon:-80.728},
+  {n:"Autobell Car Wash",lat:34.982,lon:-80.097},{n:"Whistle Express",lat:35.121,lon:-80.654},
+  {n:"Modwash",lat:37.436,lon:-77.615},{n:"Take 5 Car Wash",lat:37.513,lon:-77.355},
+];
+
+const map = L.map('map').setView([36.2,-79.5],7);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CARTO', maxZoom:19
+}).addTo(map);
+
+// Sam's Xpress markers
+samsLocs.forEach(loc => {
+  const locData = locations.find(l=>l.id===loc.id)||{};
+  L.circleMarker([loc.lat,loc.lon],{
+    radius:7, fillColor:'#0D1B3E', color:'#D4A843', weight:2, fillOpacity:.9
+  }).bindPopup(`<b>${loc.id}</b> — ${locData.city||''}, ${locData.st||''}<br>
+    Market: ${locData.mkt||''}<br>
+    HH/CW: ${locData.hhCw ? locData.hhCw.toLocaleString() : '—'}<br>
+    Predictive Score: <b>${locData.ps||'—'}</b>`).addTo(map);
+});
+
+// Competitor markers (sample)
+compSample.forEach(c => {
+  L.circleMarker([c.lat,c.lon],{
+    radius:4, fillColor:'#DC2626', color:'#DC2626', weight:0, fillOpacity:.55
+  }).bindPopup(c.n).addTo(map);
+});
+
+// ── Score rows ────────────────────────────────────────────────────────────────
+function scoreRow(label, val, max, color) {
+  return `<div class="score-row">
+    <div class="score-label">${label}</div>
+    <div class="score-track"><div class="score-fill" style="width:${(val/max)*100}%;background:${color}"></div></div>
+    <div class="score-val" style="color:${color}">${val}</div>
+  </div>`;
+}
+
+const msSorted = [...markets].sort((a,b)=>b.ms-a.ms);
+const psSorted = [...markets].sort((a,b)=>b.ps-a.ps);
+document.getElementById('msRows').innerHTML = msSorted.map(m=>scoreRow(m.m,m.ms,100,'#1B4F8C')).join('');
+document.getElementById('psRows').innerHTML = psSorted.map(m=>scoreRow(m.m,m.ps,100,'#0D9488')).join('');
+
+// ── HH/CW chart ───────────────────────────────────────────────────────────────
+const hhSorted = [...markets].sort((a,b)=>b.hhCw-a.hhCw);
+new Chart(document.getElementById('hhChart'),{
+  type:'bar',
+  data:{
+    labels: hhSorted.map(m=>m.m),
+    datasets:[{
+      data: hhSorted.map(m=>m.hhCw),
+      backgroundColor: hhSorted.map(m=>m.hhCw>=6000?'#0D9488':m.hhCw>=4000?'#2E86C1':'#DC2626'),
+      borderRadius:4
+    }]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false},
+      annotation:{annotations:[{type:'line',yMin:6000,yMax:6000,borderColor:'#16A34A',borderWidth:1.5,borderDash:[4,4],label:{content:'Healthy threshold (6,000)',enabled:true}}]}
+    },
+    scales:{
+      x:{ticks:{color:'#64748B',font:{size:10}},grid:{display:false}},
+      y:{ticks:{color:'#64748B',font:{size:10}},grid:{color:'#E8EFF8'},
+        title:{display:true,text:'Households per Car Wash',color:'#64748B',font:{size:10}}}
+    }
+  }
+});
+
+// ── Location table ────────────────────────────────────────────────────────────
+const otherMkts = ['Williamsburg','Fredericksburg','Eastern NC','Piedmont NC','Triad'];
+function renderLoc(filter) {
+  const rows = filter==='all' ? locations :
+    filter==='Other' ? locations.filter(l=>otherMkts.includes(l.mkt)) :
+    locations.filter(l=>l.mkt===filter);
+  const sorted = [...rows].sort((a,b)=>b.ps-a.ps);
+  document.getElementById('locBody').innerHTML = sorted.map((l,i)=>{
+    const psColor = l.ps>=55?'#0D9488':l.ps>=40?'#2E86C1':l.ps>=30?'#D97706':'#DC2626';
+    const hhColor = l.hhCw>=6000?'#16A34A':l.hhCw>=4000?'#1E293B':'#DC2626';
+    return `<tr>
+      <td style="font-weight:700">${l.id}</td>
+      <td>${l.city}</td>
+      <td><span style="background:${l.st==='NC'?'#E8EFF8':l.st==='SC'?'#E8F0FB':'#E8F5E0'};color:#0D1B3E;padding:2px 7px;border-radius:4px;font-size:.7rem;font-weight:700">${l.st}</span></td>
+      <td style="color:var(--muted)">${l.mkt}</td>
+      <td style="color:var(--muted);font-size:.76rem">${l.cls}</td>
+      <td style="font-weight:600;color:${hhColor}">${l.hhCw.toLocaleString()}</td>
+      <td>${l.rev.toFixed(1)}</td>
+      <td>${l.mpi.toFixed(3)}</td>
+      <td>${l.ms}</td>
+      <td style="font-weight:700;color:${psColor}">${l.ps}</td>
+    </tr>`;
+  }).join('');
+}
+renderLoc('all');
+function filterLoc(f,btn){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLoc(f);
+}
+</script>
+</body>
+</html>
